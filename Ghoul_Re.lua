@@ -14,8 +14,6 @@ local RS = game:GetService("ReplicatedStorage")
 local Remotes = RS:FindFirstChild("Remotes")
 local GetLives = Remotes:FindFirstChild("GetLives")
 
-
-
 -- Wait for LocalPlayer's HumanoidRootPart
 local player = players.LocalPlayer
 local playergui = player.PlayerGui
@@ -399,159 +397,6 @@ local function Goto_Mission()
     end
 end
 
-
---//Mana Stuff
-local default_clip = {}
-local noclip_state = {
-    CanCollide = false,
-    CollisionGroup = "Default"
-}
-local movement_dir_z, movement_dir_x = 0, 0
-local delta = tick()
-local targetCF
-local anti_grav = 2.9
-env.MovementSpeed = 0
-env.Noclip = false
-env.MovementMode = "Velocity"
-if env.Manastuff_NoClip_EV then
-    local old_noclip_state = env.Noclip
-    env.Noclip = false -- we turn off noclip to revert to default state
-    for _=1, 3 do
-        RunService.Stepped:Wait()
-    end
-    env.Manastuff_NoClip_EV:Disconnect() -- We Disconnect Old Event
-    env.Noclip = old_noclip_state
-end
-env.Manastuff_NoClip_EV = RunService.Stepped:Connect(function()
-    if has_sethiddenproperty then
-        sethiddenproperty(player, "MaxSimulationRadius", math.huge);
-        sethiddenproperty(player, "SimulationRadius", math.huge);
-    end
-    if char then
-        for _,v in pairs(char:GetDescendants())do
-            if v:IsA("BasePart") then
-                if default_clip[v] == nil then
-                    default_clip[v] = {}
-                    for index, _ in pairs(noclip_state) do
-                        default_clip[v][index] = v[index]
-                    end
-                end
-                if env.Noclip then
-                    for index, val in pairs(default_clip[v]) do
-                        v[index] = noclip_state[index]
-                    end
-                else
-                    for index, val in pairs(default_clip[v]) do
-                        v[index]= val
-                    end
-                end
-            elseif v:IsA("ObjectValue") then
-                if v.Value:IsA("BasePart") then
-                    local _t_v = v.Value
-                    if default_clip[_t_v] == nil then
-                        default_clip[_t_v] = {
-                            CanCollide = _t_v.CanCollide,
-                            CanQuery = _t_v.CanQuery,
-                            CanTouch = _t_v.CanQuery,
-                            CollisionGroup = _t_v.CollisionGroup
-                        }
-                    end
-                    if env.Noclip then
-                        for index, val in pairs(default_clip[_t_v]) do
-                            _t_v[index] = noclip_state[index]
-                        end
-                    else
-                        for index, val in pairs(default_clip[_t_v]) do
-                            _t_v[index]= val
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-if env.ManaStuff_Movement_EV then
-    env.ManaStuff_Movement_EV:Disconnect()
-end
-env.ManaStuff_Movement_EV = RunService.Stepped:Connect(function()
-    local _delta = tick()-delta
-    delta = tick()
-    if math.abs((cf_of_hrp.Position.Y+1.45) - root.Position.Y) > 0.0001 then
-        anti_grav = (cf_of_hrp.Position.Y+1.45) - root.Position.Y
-    end
-    if _delta >= (1/60)*0.99 or env.MovementMode == "Velocity" then
-        if env.Fly or env.Speed then
-            local rx,ry,rz = workspace.CurrentCamera.CFrame:ToOrientation()
-            targetCF = CFrame.new(0,0,0)*CFrame.Angles(0,ry,0)
-            if env.Fly then
-                targetCF = targetCF * CFrame.Angles(rx,0,0)
-            end
-            if env.Speed and env.MovementMode == "Positioning" and char.PrimaryPart then
-                cf_of_hrp = char:GetPrimaryPartCFrame()
-            end
-            cf_of_hrp = (CFrame.new(cf_of_hrp.p) * targetCF)*CFrame.new(movement_dir_x, 0, movement_dir_z)
-            if char ~= nil then
-                if env.MovementMode == "Positioning" and char.PrimaryPart then
-                    char:SetPrimaryPartCFrame(cf_of_hrp)
-                    if env.Fly then
-                        root.Velocity = Vector3.new(0,0,0)
-                    end
-                elseif env.MovementMode == "Velocity" then
-                    local Intensity = (root.Position - cf_of_hrp.Position).Magnitude
-                    local lk = Vector3.new(0,0,0)
-                    if Intensity < 10 then
-                        lk = (cf_of_hrp.Position - root.Position).Unit*(Intensity*10)
-                    else
-                        lk = (cf_of_hrp.Position - root.Position).Unit*(Intensity*Intensity)
-                    end
-
-                    local target_velocity = lk
-                    local yv = target_velocity.Y + anti_grav
-                    if env.Speed then
-                        yv = root.Velocity.y
-                    end
-                    root.Velocity = Vector3.new(target_velocity.X, yv , target_velocity.Z)
-                end
-            end
-        else
-        end
-    end
-end)
-if env.ManaStuff_UIS_Began then
-    env.ManaStuff_UIS_Began:Disconnect()
-end
-env.ManaStuff_UIS_Began = UIS.InputBegan:Connect(function(input,gameProcessed)
-    local k = input.KeyCode.Name:lower()
-    if k == "w" then
-        movement_dir_z = movement_dir_z - (env.MovementSpeed / 100)
-    elseif k == "s" then
-        movement_dir_z = movement_dir_z + (env.MovementSpeed / 100)
-    elseif k == "a" then
-        movement_dir_x = movement_dir_x - (env.MovementSpeed / 100)
-    elseif k == "d" then
-        movement_dir_x = movement_dir_x + (env.MovementSpeed / 100)
-    end
-end)
-
-if env.ManaStuff_UIS_Ended then
-    env.ManaStuff_UIS_Ended:Disconnect()
-end
-env.ManaStuff_UIS_Ended = UIS.InputEnded:Connect(function(input,gameProcessed)
-    local k = input.KeyCode.Name:lower()
-    if k == "w" then
-        movement_dir_z = movement_dir_z + (env.MovementSpeed / 100)
-    elseif k == "s" then
-        movement_dir_z = movement_dir_z - (env.MovementSpeed / 100)
-    elseif k == "a" then
-        movement_dir_x = movement_dir_x + (env.MovementSpeed / 100)
-    elseif k == "d" then
-        movement_dir_x = movement_dir_x - (env.MovementSpeed / 100)
-    elseif k == env.InventoryKeybind and env.QoL then
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backquote, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backquote, false, game)
-    end
-end)
-
 local function Find_Region()
     local plr = game:GetService("Players").LocalPlayer
     local playergui = plr:FindFirstChild("PlayerGui")
@@ -847,7 +692,57 @@ local Tabs = {
 }
 
 local Options = Fluent.Options
-
+--Ruby Module Loader DONT TOUCH IT
+local ModuleLoader = loadstring(game:HttpGet("https://github.com/plytalent/Roblox-Hacks/raw/refs/heads/main/Modules/Module_Loader.lua"))
+local Loaded_Module = {}
+function Load_Module(name,kwargs,args)
+	local _args = args or {Tabs.Main,Tabs.Keybinds}
+    local _kwargs = kwargs or {fluent = fluent}
+	local SubModule = ModuleLoader(Fluent, name)
+	if type(SubModule) == "table" then
+		local Args = {}
+		for _,v in pairs(SubModule.require_variables) do
+			if v == "Fluent" then
+				Args[v] = Fluent
+			elseif v == "Window" then
+				Args[v] = Window
+			elseif v == "Tabs" then
+				Args[v] = Tabs
+			end
+		end
+		local _s, e = pcall(SubModule[SubModule.Main_Function_Name], Args)
+		if _s then
+			Fluent:Notify({
+				Title = "MainModule",
+				Content = "Loaded "..name.." Submodule",
+				Duration = 8
+			})
+		else
+			print(e)
+			Fluent:Notify({
+				Title = name.." Module",
+				Content = "Internal Error",
+				Duration = 8
+			})
+		end
+	else
+		local _s, e = pcall(SubModule,{Fluent = Fluent},unpack(_args))
+		if _s then
+			Fluent:Notify({
+				Title = "MainModule",
+				Content = "Loaded "..name.." Submodule",
+				Duration = 8
+			})
+		else
+			print(e)
+			Fluent:Notify({
+				Title = name.." Module",
+				Content = "Internal Error",
+				Duration = 8
+			})
+		end
+	end
+end
 do
     local Auto_Quest = Tabs.Main:AddToggle("Auto_Quest", {Title = "Auto Quest", Default = false })
 
@@ -1065,7 +960,6 @@ do
             })
         end
     })
-
     local Input = Tabs.Server:AddInput("Input", {
         Title = "Join Server",
         Default = "",
@@ -1146,131 +1040,17 @@ do
             end
         end
     end)
-
-    --//ManaStuff
-    Tabs.Character:AddParagraph({
-        Title = "ManaFly/Run Warning",
-        Content = "All Of This Depend On Stable 60hz/FPS Stepped Event if You Press Shift + F5 and Physics Is Higher Than 60 Readjust The Speed"
-    })
-    local ManaFlyToggle = Tabs.Character:AddToggle("Fly", {
-        Title = "ManaFly",
-        SubTitle = "(In Gaia)",
-        Default = false
-    })
-    local ManaRunToggle = Tabs.Character:AddToggle("Speed", {
-        Title = "ManaRun",
-        Default = false
-    })
-    local ManaSpeed = Tabs.Character:AddSlider("MovementSpeed", {
-        Title = "Mana Speed",
-        Description = "Speed For Both ManaFly/Run",
-        Default = 500,
-        Min = 0,
-        Max = 500,
-        Rounding = 4,
-        Callback = function(Value)
-            local v = Value/100
-            movement_dir_z, movement_dir_x = 0, 0
-            if UIS:IsKeyDown(Enum.KeyCode.S) then
-                movement_dir_z = movement_dir_z + v
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.W) then
-                movement_dir_z = movement_dir_z - v
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then
-                movement_dir_x = movement_dir_x + v
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then
-                movement_dir_x = movement_dir_x - v
-            end
-            env.MovementSpeed = Value
-        end
-    })
-    Tabs.Character:AddParagraph({
-        Title = "ManaFly/Run Type Warning",
-        Content = "Positioning Type Will Mess Up Your Quest Marker"
-    })
-    local MovementModeDropdown = Tabs.Character:AddDropdown("MovementMode",{
-        Title = "ManaFly/Run Type",
-        Values = {"Positioning", "Velocity"},
-        Default = "Velocity",
-    })
-    local ManaFlyKey = Tabs.Character:AddKeybind("ManaFlyKeyBind", {
-        Title = "ManaFly Key",
-        Mode = "Toggle",
-        Default = "K",
-    })
-    local ManaRunKey = Tabs.Character:AddKeybind("ManaRunKeyBind", {
-        Title = "ManaRun Key",
-        Mode = "Toggle",
-        Default = "N",
-    })
-
-    MovementModeDropdown:OnChanged(function(Value)
-        env.MovementMode = Value
-    end)
-    
-    ManaFlyToggle:OnChanged(function()
-        if char.PrimaryPart then
-            cf_of_hrp = char:GetPrimaryPartCFrame()
-        end
-        env.Fly = Options.Fly.Value
-        if env.Speed then
-            Options.Speed:SetValue(false)
-        end
-    end)
-    ManaRunToggle:OnChanged(function()
-        if char.PrimaryPart then
-            cf_of_hrp = char:GetPrimaryPartCFrame()
-        end
-        env.Speed = Options.Speed.Value
-    end)
-    
-    
-    ManaFlyKey:OnClick(function()
-        Options.Fly:SetValue(not env.Fly)
-        Options.Speed:SetValue(false)
-        if char.PrimaryPart then
-            cf_of_hrp = char:GetPrimaryPartCFrame()
-        end
-        movement_dir_z, movement_dir_x = 0, 0
-        local change = (env.MovementSpeed / 100)
-        if UIS:IsKeyDown(Enum.KeyCode.S) then
-            movement_dir_z = movement_dir_z + change
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.W) then
-            movement_dir_z = movement_dir_z - change
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then
-            movement_dir_x = movement_dir_x + change
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then
-            movement_dir_x = movement_dir_x - change
-        end
-    end)
-    
-    ManaRunKey:OnClick(function()
-        if env.Fly then
-            Options.Speed:SetValue(false)
-            return
-        end
-        Options.Speed:SetValue(not env.Speed)
-        movement_dir_z, movement_dir_x = 0, 0
-        local change = (env.MovementSpeed / 100)
-        if UIS:IsKeyDown(Enum.KeyCode.S) then
-            movement_dir_z = movement_dir_z + change
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.W) then
-            movement_dir_z = movement_dir_z - change
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then
-            movement_dir_x = movement_dir_x + change
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then
-            movement_dir_x = movement_dir_x - change
+    if env.Event_UIS_Ended then
+        env.Event_UIS_Ended:Disconnect()
+    end
+    env.Event_UIS_Ended = UIS.InputEnded:Connect(function(input,gameProcessed)
+        if k == env.InventoryKeybind and env.QoL then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backquote, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backquote, false, game)
         end
     end)
 end
+Load_Module("Movement",{Tabs.Character,Tabs.Character})
 
 -- Addons:
 -- SaveManager (Allows you to have a configuration system)
