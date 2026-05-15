@@ -12,6 +12,9 @@ local Msg = RS:WaitForChild("Msg")
 local RemoteEvent = Msg:WaitForChild("RemoteEvent")
 local RemoteEvent2 = RemoteEvent:WaitForChild("RemoteEvent")
 local ReleaseGroupSkill = RemoteEvent:WaitForChild("ReleaseGroupSkill")
+local Function = Msg:WaitForChild("Function")
+local TalkFunc = Function:WaitForChild("TalkFunc")
+
 
 local getgenv = getgenv or function() return _G end
 
@@ -334,15 +337,31 @@ local AutoAscend = FarmTab:Toggle({
 
 Config:Register("AutoAscend", AutoAscend)
 
-local InfInv = FarmTab:Button({
-    Title = "Inf Inventory",
-    Desc = "Keep your inventory infinite\nBlueberry will bug",
+local FarmSpot = FarmTab:Button({
+    Title = "Farm Spot",
+    Desc = "Teleport to the best farm spot",
     Callback = function()
-        func.InfInv()
+        local root = func.GetRoot()
+        if not root then return end
+        root.CFrame = CFrame.new(221, 193, 126)
     end
 })
 
-Config:Register("InfInv", InfInv)
+local SellPop = FarmTab:Button({
+    Title = "Sell Pop",
+    Desc = "Open Sell UI",
+    Callback = function()
+        local args = {
+            "\230\137\147\229\188\128\231\149\140\233\157\162",
+            {
+                "SellPop"
+            }
+        }
+        TalkFunc:InvokeServer(unpack(args))
+    end
+})
+
+
 
 Config:Load()
 
