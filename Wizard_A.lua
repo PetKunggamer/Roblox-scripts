@@ -219,6 +219,36 @@ function func.AutoQuest()
     }
     TalkFunc:InvokeServer(unpack(args))
     end
+    -- Talk with harry
+    local args = {
+        "\229\174\140\230\136\144\228\187\187\229\138\161",
+        {
+            "\228\187\187\229\138\16110"
+        }
+    }
+    TalkFunc:InvokeServer(unpack(args))
+end
+
+function func.AutoChest()
+    local folder = workspace["\229\174\162\230\136\183\231\171\175\229\174\157\231\174\177"]
+    local playerRoot = func.GetRoot()
+    local originalCF = playerRoot.CFrame
+
+    for _, v in pairs(folder:GetChildren()) do
+        if v:IsA("Model") then
+            local root = v:FindFirstChild("HumanoidRootPart")
+            if root then
+                local prompt = root:FindFirstChild("ChestPrompt")
+                if prompt and prompt.Enabled then
+                    fireproximityprompt(prompt)
+                    task.wait(0.1)
+                end
+            end
+        end
+    end
+    wait(1) -- wait for chest to open
+    -- วาปกลับจุดเดิม
+    playerRoot.CFrame = originalCF
 end
 
 
@@ -374,6 +404,22 @@ local AutoQuest = FarmTab:Toggle({
     end)
 })
 
+local AutoChest = FarmTab:Toggle({
+    Title = "Auto Chest",
+    Desc = "Auto open chests around you.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoChest", function()
+                while task.wait(1) do
+                    func.AutoChest()
+                end
+            end)
+        else
+            StopLoop("AutoChest")
+        end
+    end)
+})
+
 Config:Register("AutoQuest", AutoQuest)
 
 local FarmSpot = FarmTab:Button({
@@ -400,7 +446,21 @@ local SellPop = FarmTab:Button({
     end
 })
 
-Config:Register("SellPop", SellPop)
+local ShopPop = FarmTab:Button({
+    Title = "Shop Pop",
+    Desc = "Open Shop UI",
+    Callback = function()
+        local args = {
+            "\230\137\147\229\188\128\231\149\140\233\157\162",
+            {
+                "EquipShop"
+            }
+        }
+        TalkFunc:InvokeServer(unpack(args))
+    end
+})
+
+
 
 Config:Load()
 
