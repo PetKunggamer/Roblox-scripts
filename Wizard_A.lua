@@ -253,7 +253,6 @@ function func.AutoChest()
     playerRoot.CFrame = originalCF
 end
 
-		
 -- Stats tracking
 local sessionStart = os.time()
 local startGold = nil
@@ -490,7 +489,7 @@ local AutoChest = FarmTab:Toggle({
     end)
 })
 
-Config:Register("AutoQuest", AutoQuest)
+Config:Register("AutoChest", AutoChest)
 
 local FarmSpot = FarmTab:Button({
     Title = "Farm Spot",
