@@ -164,6 +164,9 @@ function func.Attack()
 end
 
 function func.AutoPickUp()
+    if not workspace.Drops[plr.UserId] then
+        workspace.Drops:WaitForChild(plr.UserId)
+    end
     for i,v in pairs(workspace.Drops[plr.UserId]:GetChildren()) do
         if v:IsA("Vector3Value") then
             local args = {
@@ -472,6 +475,8 @@ local AutoQuest = FarmTab:Toggle({
         end
     end)
 })
+
+Config:Register("AutoQuest", AutoQuest)
 
 local AutoChest = FarmTab:Toggle({
     Title = "Auto Chest",
