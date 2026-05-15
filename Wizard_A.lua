@@ -233,11 +233,12 @@ function func.AutoChest()
     local folder = workspace["\229\174\162\230\136\183\231\171\175\229\174\157\231\174\177"]
     local playerRoot = func.GetRoot()
     local originalCF = playerRoot.CFrame
-
+    local found = false
     for _, v in pairs(folder:GetChildren()) do
         if v:IsA("Model") then
             local root = v:FindFirstChild("HumanoidRootPart")
             if root then
+                found = true
                 local prompt = root:FindFirstChild("ChestPrompt")
                 if prompt and prompt.Enabled then
                     fireproximityprompt(prompt)
@@ -246,11 +247,56 @@ function func.AutoChest()
             end
         end
     end
+    if not found then return end
     wait(1) -- wait for chest to open
     -- วาปกลับจุดเดิม
     playerRoot.CFrame = originalCF
 end
 
+-- Stats tracking
+local sessionStart = os.time()
+local startGold = nil
+local startLevel = nil
+
+local function parseGold(text)
+    local clean = text:gsub("<[^>]+>", ""):gsub("/.*", "")
+    local num = tonumber(clean:match("[%d%.]+")) or 0
+    local suffix = clean:match("[KMB]") or ""
+    local mult = suffix == "K" and 1000 or suffix == "M" and 1000000 or suffix == "B" and 1000000000 or 1
+    return num * mult
+end
+
+local function getGold()
+    local ok, res = pcall(function()
+        return plr.PlayerGui.TopbarStandard.Holders.Left.Money.IconButton.Menu.IconSpot.Contents.IconLabelContainer.IconLabel.Text
+    end)
+    return ok and parseGold(res) or 0
+end
+
+local function getLevel()
+    local ok, res = pcall(function()
+        return plr.PlayerGui.ScreenGui.Main.BottomLeft.Lv.CurLv.Text
+    end)
+    return ok and (tonumber(res:match("%d+")) or 0) or 0
+end
+
+local function formatTime(secs)
+    return string.format("%02d:%02d:%02d", math.floor(secs/3600), math.floor((secs%3600)/60), secs%60)
+end
+
+local function formatNum(n)
+    if n >= 1000000 then return string.format("%.1fM", n/1000000)
+    elseif n >= 1000 then return string.format("%.1fK", n/1000)
+    else return tostring(math.floor(n)) end
+end
+
+task.delay(1, function()
+    startGold = getGold()
+    startLevel = getLevel()
+end)
+
+
+print('Function loadded!!')
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
@@ -332,6 +378,29 @@ local FarmTab = MainSection:Tab({
 FarmTab:Select()
 
 -- button save
+
+local StatsParagraph = FarmTab:Paragraph({
+    Title = "📊 Session Stats",
+    Desc = "Loading...",
+})
+
+task.spawn(function()
+    while task.wait(1) do
+        local elapsed = os.time() - sessionStart
+        local hrs = math.max(elapsed / 3600, 0.0001)
+        local curGold = getGold()
+        local curLevel = getLevel()
+        local goldPerHr = (curGold - (startGold or curGold)) / hrs
+        local lvGain = curLevel - (startLevel or curLevel)
+
+        StatsParagraph:SetDesc(string.format(
+            "⏱ %s\n💰 %s/hr\n⚔ +%d levels",
+            formatTime(elapsed),
+            formatNum(goldPerHr),
+            lvGain
+        ))
+    end
+end)
 
 local Attack = FarmTab:Toggle({
     Title = "Auto Farm",
