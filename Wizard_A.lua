@@ -201,6 +201,27 @@ function func.InfInv()
 	if type(res) == "table" then table.foreach(res, warn) end
 end
 
+function func.AutoQuest()
+    local quest = {
+        "\228\187\187\229\138\1611",
+        "\228\187\187\229\138\1612",
+        "\228\187\187\229\138\1613",
+        "\228\187\187\229\138\1614",
+        "\228\187\187\229\138\1615",
+        "\228\187\187\229\138\1616",
+        }
+    for i,v in pairs(quest) do
+    local args = {
+        "\229\143\145\230\148\190\228\187\187\229\138\161",
+        {
+            tostring(v)
+        }
+    }
+    TalkFunc:InvokeServer(unpack(args))
+    end
+end
+
+
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local Window = WindUI:CreateWindow({
@@ -337,6 +358,24 @@ local AutoAscend = FarmTab:Toggle({
 
 Config:Register("AutoAscend", AutoAscend)
 
+local AutoQuest = FarmTab:Toggle({
+    Title = "Auto Quest",
+    Desc = "Auto complete quests.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoQuest", function()
+                while task.wait(1) do
+                    func.AutoQuest()
+                end
+            end)
+        else
+            StopLoop("AutoQuest")
+        end
+    end)
+})
+
+Config:Register("AutoQuest", AutoQuest)
+
 local FarmSpot = FarmTab:Button({
     Title = "Farm Spot",
     Desc = "Teleport to the best farm spot",
@@ -361,7 +400,7 @@ local SellPop = FarmTab:Button({
     end
 })
 
-
+Config:Register("SellPop", SellPop)
 
 Config:Load()
 
