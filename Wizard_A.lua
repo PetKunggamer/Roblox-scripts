@@ -253,6 +253,7 @@ function func.AutoChest()
     playerRoot.CFrame = originalCF
 end
 
+		
 -- Stats tracking
 local sessionStart = os.time()
 local startGold = nil
