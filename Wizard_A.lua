@@ -96,6 +96,20 @@ end
 
 func.DestroyUI()
 
+local id_list = {
+    ["Blueberry"] = 2000001,
+    ["Withered Mushroom"] = 2000002,
+    ["Seagull Egg"] = 2000003,
+    ["Dwarf Emblem"] = 2000004,
+    ["Golden Tooth"] = 2000005,
+    ["Flame Crest"] = 2000006,
+    ["Goblin Finger"] = 2000007,
+    ["Goblin Bone"] = 2000008,
+    ["Copper Earring"] = 2000009,
+    ["Furnace Core"] = 2000010,
+    ["Fire Shard"] = 2000016,
+}
+
 function func.GetRoot()
     local char = plr.Character or plr.CharacterAdded:Wait()
     return char:WaitForChild("HumanoidRootPart")
@@ -214,29 +228,40 @@ function func.AutoQuest()
         "\228\187\187\229\138\1616",
         }
     for i,v in pairs(quest) do
-    local args = {
-        "\229\143\145\230\148\190\228\187\187\229\138\161",
-        {
-            tostring(v)
+        local args = {
+            "\229\143\145\230\148\190\228\187\187\229\138\161",
+            {
+                tostring(v)
+            }
         }
-    }
-    TalkFunc:InvokeServer(unpack(args))
+        TalkFunc:InvokeServer(unpack(args))
     end
     -- Talk with harry
-    local args = {
-        "\229\174\140\230\136\144\228\187\187\229\138\161",
-        {
-            "\228\187\187\229\138\16110"
+    local harry = {
+        "\228\187\187\229\138\16110",
+        "\228\187\187\229\138\16111",
+        "\228\187\187\229\138\16112",
+        "\228\187\187\229\138\16113",
+        "\228\187\187\229\138\16114",
+        "\228\187\187\229\138\16115",
         }
-    }
-    TalkFunc:InvokeServer(unpack(args))
+    for i,v in pairs(harry) do
+        local args = {
+            "\229\174\140\230\136\144\228\187\187\229\138\161",
+            {
+                tostring(v)
+            }
+        }
+        TalkFunc:InvokeServer(unpack(args))
+    end
 end
+
+local found = false
 
 function func.AutoChest()
     local folder = workspace["\229\174\162\230\136\183\231\171\175\229\174\157\231\174\177"]
     local playerRoot = func.GetRoot()
     local originalCF = playerRoot.CFrame
-    local found = false
     for _, v in pairs(folder:GetChildren()) do
         if v:IsA("Model") then
             local root = v:FindFirstChild("HumanoidRootPart")
@@ -254,7 +279,64 @@ function func.AutoChest()
     wait(1) -- wait for chest to open
     -- วาปกลับจุดเดิม
     playerRoot.CFrame = originalCF
+    found = false
 end
+
+function func.UnlockGamepass()
+    for _,v in pairs(plr.GamePass:GetChildren()) do
+        if v:IsA("NumberValue") then
+            v.Value = 1
+        end
+    end
+end
+
+local selectedMaterials = {}
+
+local function getMaterialList()
+    if not next(selectedMaterials) then return "Empty" end
+    local lines = {}
+    for idStr, count in pairs(selectedMaterials) do
+        -- หาชื่อจาก id
+        local name = idStr
+        for n, id in pairs(id_list) do
+            if tostring(id) == idStr then name = n break end
+        end
+        table.insert(lines, string.format("• %s x%d", name, count))
+    end
+    return table.concat(lines, "\n")
+end
+
+
+-- AutoBrew ใช้ selectedMaterials
+function func.AutoBrew()
+    if not next(selectedMaterials) then return end
+    local RF = game:GetService("ReplicatedStorage"):WaitForChild("Msg")
+        :WaitForChild("RemoteFunction"):WaitForChild("RemoteFunction")
+    local cauldronID = 8000001
+
+    local res1 = RF:InvokeServer("\231\130\188\232\141\175\230\184\184\230\136\143\229\188\128\229\167\139", {
+        cauldronID = cauldronID,
+        materials = selectedMaterials,
+    })
+    if not res1 then return end
+    task.wait(0.5)
+    RF:InvokeServer("\231\130\188\232\141\175", {
+        cauldronID = cauldronID,
+        materials = selectedMaterials,
+        gameScore = 100
+    })
+end
+
+
+
+
+
+
+
+
+
+
+
 
 -- Stats tracking
 local sessionStart = os.time()
@@ -297,7 +379,6 @@ task.delay(1, function()
     startGold = getGold()
     startLevel = getLevel()
 end)
-
 
 print('Function loadded!!')
 
@@ -380,12 +461,38 @@ local FarmTab = MainSection:Tab({
 
 FarmTab:Select()
 
+-- Create FarmTab
+local Brew = MainSection:Tab({
+    Title = "Brew",
+    Icon = "bottle-wine", -- lucide icon
+})
+
+local Shop = MainSection:Tab({
+    Title = "Shop",
+    Icon = "shopping-cart", -- lucide icon
+})
+
+local Misc = MainSection:Tab({
+    Title = "Misc",
+    Icon = "settings", -- lucide icon
+})
+
 -- button save
 
 local StatsParagraph = FarmTab:Paragraph({
     Title = "📊 Session Stats",
     Desc = "Loading...",
 })
+
+local BrewParagraph = Brew:Paragraph({
+    Title = "🧪 Brew Materials",
+    Desc = "Empty",
+})
+
+local function updateParagraph()
+    BrewParagraph:SetDesc(getMaterialList())
+end
+
 
 task.spawn(function()
     while task.wait(1) do
@@ -496,6 +603,73 @@ local AutoChest = FarmTab:Toggle({
 
 Config:Register("AutoChest", AutoChest)
 
+local AutoBrew = Brew:Toggle({
+    Title = "Auto Brew",
+    Desc = "Auto brew potions when you have materials.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoBrew", function()
+                while task.wait(1) do
+                    func.AutoBrew()
+                end
+            end)
+        else
+            StopLoop("AutoBrew")
+        end
+    end)
+})
+
+local selectedItem = nil
+local BrewDropdown = Brew:Dropdown({
+    Title = "Material",
+    Desc = "Select material to add",
+    Values = (function()
+        local t = {}
+        for name in pairs(id_list) do table.insert(t, name) end
+        table.sort(t)
+        return t
+    end)(),
+    Multi = false,
+    AllowNone = true,
+    Callback = function(val)
+        selectedItem = val
+    end
+})
+
+-- Slider เลือกจำนวน
+local selectedCount = 1
+
+local BrewSlider = Brew:Slider({
+    Title = "Count",
+    Desc = "Amount to add",
+    Step = 1,
+    Value = { Min = 1, Max = 10, Default = 1 },
+    Callback = function(val)
+        selectedCount = val  -- แค่เก็บตัวเลขไว้
+    end
+})
+
+-- ปุ่ม Add
+local BrewAdd = Brew:Button({
+    Title = "➕ Add Material",
+    Callback = function()
+        if not selectedItem then return end
+        local id = tostring(id_list[selectedItem])
+        selectedMaterials[id] = (selectedMaterials[id] or 0) + selectedCount  -- บวก count ที่นี่
+        updateParagraph()
+    end
+})
+-- ปุ่ม Clear
+local ClearBrew = Brew:Button({
+    Title = "🗑 Clear Materials",
+    Desc = "Clear all materials from brew list",
+    Callback = function()
+        selectedMaterials = {}
+        updateParagraph()
+        WindUI:Notify({ Title = "Brew", Content = "Cleared!", Duration = 2, Icon = "trash" })
+    end
+})
+
 local FarmSpot = FarmTab:Button({
     Title = "Farm Spot",
     Desc = "Teleport to the best farm spot",
@@ -506,7 +680,7 @@ local FarmSpot = FarmTab:Button({
     end
 })
 
-local SellPop = FarmTab:Button({
+local SellPop = Shop:Button({
     Title = "Sell Pop",
     Desc = "Open Sell UI",
     Callback = function()
@@ -520,7 +694,7 @@ local SellPop = FarmTab:Button({
     end
 })
 
-local ShopPop = FarmTab:Button({
+local ShopPop = Shop:Button({
     Title = "Shop Pop",
     Desc = "Open Shop UI",
     Callback = function()
@@ -534,7 +708,22 @@ local ShopPop = FarmTab:Button({
     end
 })
 
+local InfInv = Misc:Button({
+    Title = "Inf Inventory Storage",
+    Desc = "Get inf inventory storage but berries will bug (open material sell pop first)",
+    Callback = function()
+        func.InfInv()
+    end
+})
 
+
+local UnlockGamepass = Misc:Button({
+    Title = "Unlock Gamepass",
+    Desc = "Unlock all gamepasses.",
+    Callback = function()
+        func.UnlockGamepass()
+    end
+})
 
 Config:Load()
 
