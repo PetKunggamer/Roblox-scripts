@@ -16,6 +16,12 @@ local Function = Msg:WaitForChild("Function")
 local TalkFunc = Function:WaitForChild("TalkFunc")
 
 
+local Utils = require(game.ReplicatedFirst.AllSideCode.UtilsSystem)
+local PlayerData = Utils.PlayerData
+local EnumMgr = Utils.EnumMgr
+local MAX_SELL_RARITY = 999
+local itemType = EnumMgr.ItemType.Potion
+
 local getgenv = getgenv or function() return _G end
 
 getgenv().Loops = getgenv().Loops or {}
@@ -380,6 +386,139 @@ task.delay(1, function()
     startLevel = getLevel()
 end)
 
+local RF = game:GetService("ReplicatedStorage")
+    :WaitForChild("Msg")
+    :WaitForChild("RemoteFunction")
+    :WaitForChild("RemoteFunction")
+
+local FuseNeed = {
+    [""] = 3,
+    ["NONE"] = 3,
+    ["S"] = 4,
+    ["SS"] = 5,
+    ["SSS"] = math.huge
+}
+
+local function GetGroupedPotions()
+    local bag = PlayerData.GetPlrDataByKey(plr, "Bag")
+    if not bag then return {} end
+
+    local grouped = {}
+
+    for _, item in pairs(bag) do
+        if type(item) == "table" then
+            local tp = tonumber(item.tp)
+            local xyd = tonumber(item.xyd) or 0
+            local lock = tonumber(item.lock) or 0
+            local onlyID = item.onlyID
+            local itemID = item.id
+            local rarity = tostring(item.mpTp or "NONE")
+
+            local isEquipped =
+                tp == EnumMgr.ItemType.Potion
+                and (tonumber(item.using) or 0) > 0
+
+            if onlyID
+                and itemID
+                and lock == 0
+                and xyd <= MAX_SELL_RARITY
+                and tp == itemType
+                and not isEquipped
+                and rarity ~= "SSS"
+            then
+                local key = tostring(itemID) .. "_" .. rarity
+
+                grouped[key] = grouped[key] or {
+                    itemID = itemID,
+                    rarity = rarity,
+                    potions = {}
+                }
+
+                table.insert(grouped[key].potions, {
+                    onlyID = onlyID,
+                    xyd = xyd,
+                    rarity = rarity,
+                    itemID = itemID
+                })
+            end
+        end
+    end
+
+    return grouped
+end
+
+local function FusePotion(ids)
+    return RF:InvokeServer("药水合成", {
+        onlyIDs = ids
+    })
+end
+
+function func.AutoFuse()
+    local grouped = GetGroupedPotions()
+
+    for key, data in pairs(grouped) do
+        local rarity = data.rarity
+        local need = FuseNeed[rarity] or 3
+        local potions = data.potions
+
+        if #potions >= need and rarity ~= "SSS" then
+            local ids = {}
+
+            for i = 1, need do
+                table.insert(ids, potions[i].onlyID)
+            end
+
+            print("==========")
+            print("Fuse Group:", key)
+            print("Rarity:", rarity)
+            print("Need:", need)
+
+            for _, id in pairs(ids) do
+                print("onlyID:", id)
+            end
+
+            local result = FusePotion(ids)
+            print("Result:", result)
+
+            task.wait(0.8)
+            break
+        end
+    end
+end
+
+function func.GetSellItems(itemType)
+    local bag = PlayerData.GetPlrDataByKey(plr, "Bag")
+    if not bag then return {} end
+
+    local items = {}
+    for _, item in pairs(bag) do
+        if type(item) == "table" then
+            local tp = tonumber(item.tp)
+            local xyd = tonumber(item.xyd) or 0
+            local lock = tonumber(item.lock) or 0
+            local onlyID = item.onlyID
+
+            -- skip equipped potions (using > 0)
+            local isEquipped = tp == EnumMgr.ItemType.Potion and (tonumber(item.using) or 0) > 0
+
+            if onlyID and lock == 0 and xyd <= MAX_SELL_RARITY
+                and tp == itemType and not isEquipped then
+                table.insert(items, onlyID)
+            end
+        end
+    end
+    return items
+end
+
+local MIN_KEEP_RARITY = 3 -- 4 = Epic, 5 = Legendary, sell anything below
+
+function func.SellPotions()
+    local items = func.GetSellItems(EnumMgr.ItemType.Potion)
+    if #items == 0 then return end
+    print("Selling", #items, "potions (rarity <= 3)")
+    RF:InvokeServer("出售背包物品", { onlyIDList = items })
+end
+
 print('Function loadded!!')
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
@@ -618,6 +757,42 @@ local AutoBrew = Brew:Toggle({
         end
     end)
 })
+
+local AutoFuse = Brew:Toggle({
+    Title = "Auto Fuse",
+    Desc = "Auto fuse potions.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoFuse", function()
+                while task.wait(1) do
+                    func.AutoFuse()
+                end
+            end)
+        else
+            StopLoop("AutoFuse")
+        end
+    end)
+})
+
+Config:Register("AutoFuse", AutoFuse)
+
+-- local SellPotions = Brew:Toggle({
+--     Title = "Auto Sell Potions",
+--     Desc = "Auto sell potions below Epic rarity.",
+--     Callback = AutoSave(function(state)
+--         if state then
+--             StartLoop("SellPotions", function()
+--                 while task.wait(5) do
+--                     func.SellPotions()
+--                 end
+--             end)
+--         else
+--             StopLoop("SellPotions")
+--         end
+--     end)
+-- })
+
+-- Config:Register("SellPotions", SellPotions)
 
 local selectedItem = nil
 local BrewDropdown = Brew:Dropdown({
