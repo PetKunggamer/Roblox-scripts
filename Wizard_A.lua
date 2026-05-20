@@ -724,6 +724,28 @@ local AutoQuest = FarmTab:Toggle({
 
 Config:Register("AutoQuest", AutoQuest)
 
+local AutoUpradeInv = FarmTab:Toggle({
+    Title = "Auto Upgrade Inventory",
+    Desc = "Auto upgrade inventory when you can.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoUpgradeInv", function()
+                while task.wait(.1) do
+                    local RF = game:GetService("ReplicatedStorage"):WaitForChild("Msg")
+                    :WaitForChild("RemoteFunction"):WaitForChild("RemoteFunction")
+                    RF:InvokeServer("背包容量金币升级",{
+                        itemTp = 9
+                    })
+                end
+            end)
+        else
+            StopLoop("AutoUpgradeInv")
+        end
+    end)
+})
+
+Config:Register("AutoUpgradeInv", AutoUpradeInv)
+
 local AutoChest = FarmTab:Toggle({
     Title = "Auto Chest",
     Desc = "Auto open chests around you.",
