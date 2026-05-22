@@ -138,6 +138,10 @@ function func.GetMob()
     return mob
 end
 
+function func.waitForHUD()
+    return plr.PlayerGui:WaitForChild("ScreenGui", 10)
+end
+
 local currentHighlight = nil
 
 function func.Attack()
@@ -289,12 +293,14 @@ function func.AutoChest()
 end
 
 function func.UnlockGamepass()
-    for _,v in pairs(plr.GamePass:GetChildren()) do
+    for _,v in pairs(game.Players.LocalPlayer.GamePass:GetChildren()) do
         if v:IsA("NumberValue") then
             v.Value = 1
         end
     end
 end
+
+func.UnlockGamepass()
 
 local selectedMaterials = {}
 
@@ -519,6 +525,22 @@ function func.SellPotions()
     RF:InvokeServer("出售背包物品", { onlyIDList = items })
 end
 
+function func.Skill()
+	local root,hud = func.GetRoot(),func.waitForHUD()
+	if not root or not hud then return end
+	for _,v in pairs(hud.Main.Skill:GetChildren()) do
+		local cd = v:FindFirstChild("CD")
+		local sn = v:FindFirstChild("LInfo") and v.LInfo:FindFirstChild("SkillName")
+		local id = tonumber(v.Name:match("%d"))
+		if v:IsA("Frame") and id and cd and not cd.Visible and sn and sn.Text ~= "" and not v.Name:find("AutoFight") then
+			ReleaseGroupSkill:FireServer(id,{
+				targetCF = root.CFrame,
+				releaseCF = root.CFrame
+			})
+		end
+	end
+end
+
 print('Function loadded!!')
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
@@ -668,6 +690,24 @@ local Attack = FarmTab:Toggle({
 })
 
 Config:Register("Attack", Attack)
+
+local AutoSkill = FarmTab:Toggle({
+    Title = "Auto Skill",
+    Desc = "Auto use skills when they are off cooldown.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoSkill", function()
+                while task.wait(.1) do
+                    func.Skill()
+                end
+            end)
+        else
+            StopLoop("AutoSkill")
+        end
+    end)
+})
+
+Config:Register("AutoSkill", AutoSkill)
 
 local AutoPickUp = FarmTab:Toggle({
     Title = "Auto Pick Up",
@@ -910,15 +950,6 @@ local InfInv = Misc:Button({
     Desc = "Get inf inventory storage but berries will bug (open material sell pop first)",
     Callback = function()
         func.InfInv()
-    end
-})
-
-
-local UnlockGamepass = Misc:Button({
-    Title = "Unlock Gamepass",
-    Desc = "Unlock all gamepasses.",
-    Callback = function()
-        func.UnlockGamepass()
     end
 })
 
