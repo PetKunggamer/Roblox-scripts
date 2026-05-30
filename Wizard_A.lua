@@ -8,6 +8,7 @@ local plr = game.Players.LocalPlayer
 
 
 local RS = game:GetService("ReplicatedStorage")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local Msg = RS:WaitForChild("Msg")
 local RemoteEvent = Msg:WaitForChild("RemoteEvent")
 local RemoteEvent2 = RemoteEvent:WaitForChild("RemoteEvent")
@@ -1044,6 +1045,27 @@ local InfInv = Misc:Button({
         func.InfInv()
     end
 })
+
+local PromptButtonHoldBegan
+
+local InstantPrompt = Misc:Toggle({
+    Title = "Instant Prompt",
+    Desc = "Instant proximity prompts.",
+    Callback = AutoSave(function(state)
+        if state then
+            PromptButtonHoldBegan = ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
+                fireproximityprompt(prompt)
+            end)
+        else
+            if PromptButtonHoldBegan then
+                PromptButtonHoldBegan:Disconnect()
+                PromptButtonHoldBegan = nil
+            end
+        end
+    end)
+})
+
+Config:Register("InstantPrompt", InstantPrompt)
 
 Config:Load()
 
