@@ -188,16 +188,11 @@ function func.Attack()
 end
 
 function func.AutoPickUp()
-    if not workspace.Drops[plr.UserId] then
-        workspace.Drops:WaitForChild(plr.UserId)
-    end
-    for i,v in pairs(workspace.Drops[plr.UserId]:GetChildren()) do
+    local drops = workspace.Drops:FindFirstChild(tostring(plr.UserId))
+    if not drops then return end
+    for _, v in pairs(drops:GetChildren()) do
         if v:IsA("Vector3Value") then
-            local args = {
-                "pick",
-                tostring(v)
-            }
-            RemoteEvent2:FireServer(unpack(args))
+            RemoteEvent2:FireServer("pick", v.Name)
         end
     end
 end
@@ -338,17 +333,6 @@ function func.AutoBrew()
         gameScore = 100
     })
 end
-
-
-
-
-
-
-
-
-
-
-
 
 -- Stats tracking
 local sessionStart = os.time()
@@ -541,6 +525,52 @@ function func.Skill()
 	end
 end
 
+local material_event = {
+    ["Sharp Fangs"]        = 2001001,
+    ["Eye of Stone"]       = 2001002,
+    ["Terrifying Jaws"]    = 2001003,
+    ["Tree Wraith"]        = 2001004,
+    ["Ancient Dragon Egg"] = 2001005,
+}
+
+local eventBrewMaterials = {}
+
+local function getEventMaterialList()
+    if not next(eventBrewMaterials) then return "Empty" end
+    local lines = {}
+    for id, count in pairs(eventBrewMaterials) do
+        local name = tostring(id)
+        for n, v in pairs(material_event) do
+            if v == id then name = n break end
+        end
+        table.insert(lines, string.format("• %s x%d", name, count))
+    end
+    return table.concat(lines, "\n")
+end
+
+function func.AutoBrewEvent()
+    if not next(eventBrewMaterials) then return end
+    local RF = game:GetService("ReplicatedStorage"):WaitForChild("Msg")
+        :WaitForChild("RemoteFunction"):WaitForChild("RemoteFunction")
+    local res1 = RF:InvokeServer("\231\130\188\232\141\175\230\184\184\230\136\143\229\188\128\229\167\139", {
+        cauldronID = 8000001,
+        eventTp = 1,
+        alchemyWorldID = 101,
+        alchemyViewKind = "event",
+        materials = eventBrewMaterials,
+    })
+    if not res1 then print("EventBrew prep failed") return end
+    task.wait(0.5)
+    RF:InvokeServer("\231\130\188\232\141\175", {
+        cauldronID = 8000001,
+        eventTp = 1,
+        alchemyWorldID = 101,
+        alchemyViewKind = "event",
+        materials = eventBrewMaterials,
+        gameScore = 100
+    })
+end
+
 print('Function loadded!!')
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
@@ -628,6 +658,11 @@ local Brew = MainSection:Tab({
     Icon = "bottle-wine", -- lucide icon
 })
 
+local Event = MainSection:Tab({
+    Title = "Event",
+    Icon = "sparkles",
+})
+
 local Shop = MainSection:Tab({
     Title = "Shop",
     Icon = "shopping-cart", -- lucide icon
@@ -649,6 +684,7 @@ local BrewParagraph = Brew:Paragraph({
     Title = "🧪 Brew Materials",
     Desc = "Empty",
 })
+
 
 local function updateParagraph()
     BrewParagraph:SetDesc(getMaterialList())
@@ -838,24 +874,6 @@ local AutoFuse = Brew:Toggle({
 
 Config:Register("AutoFuse", AutoFuse)
 
--- local SellPotions = Brew:Toggle({
---     Title = "Auto Sell Potions",
---     Desc = "Auto sell potions below Epic rarity.",
---     Callback = AutoSave(function(state)
---         if state then
---             StartLoop("SellPotions", function()
---                 while task.wait(5) do
---                     func.SellPotions()
---                 end
---             end)
---         else
---             StopLoop("SellPotions")
---         end
---     end)
--- })
-
--- Config:Register("SellPotions", SellPotions)
-
 local selectedItem = nil
 local BrewDropdown = Brew:Dropdown({
     Title = "Material",
@@ -906,6 +924,80 @@ local ClearBrew = Brew:Button({
         WindUI:Notify({ Title = "Brew", Content = "Cleared!", Duration = 2, Icon = "trash" })
     end
 })
+
+local EventBrewParagraph = Event:Paragraph({
+    Title = "🎉 Event Brew Materials",
+    Desc = "Empty",
+})
+
+local function updateEventParagraph()
+    EventBrewParagraph:SetDesc(getEventMaterialList())
+end
+local selectedEventItem = nil
+local selectedEventCount = 1
+
+Event:Dropdown({
+    Title = "Material",
+    Desc = "Select event material",
+    Values = (function()
+        local t = {}
+        for name in pairs(material_event) do table.insert(t, name) end
+        table.sort(t)
+        return t
+    end)(),
+    Multi = false,
+    AllowNone = true,
+    Callback = function(val)
+        selectedEventItem = val
+    end
+})
+
+Event:Slider({
+    Title = "Count",
+    Desc = "Amount to add",
+    Step = 1,
+    Value = { Min = 1, Max = 20, Default = 3 },
+    Callback = function(val)
+        selectedEventCount = val
+    end
+})
+
+Event:Button({
+    Title = "➕ Add Material",
+    Callback = function()
+        if not selectedEventItem then return end
+        local id = material_event[selectedEventItem]
+        eventBrewMaterials[id] = (eventBrewMaterials[id] or 0) + selectedEventCount
+        updateEventParagraph()
+    end
+})
+
+Event:Button({
+    Title = "🗑 Clear Materials",
+    Callback = function()
+        eventBrewMaterials = {}
+        updateEventParagraph()
+        WindUI:Notify({ Title = "Event Brew", Content = "Cleared!", Duration = 2, Icon = "trash" })
+    end
+})
+
+local AutoBrewEvent = Event:Toggle({
+    Title = "Auto Event Brew",
+    Desc = "Auto brew using event cauldron.",
+    Callback = AutoSave(function(state)
+        if state then
+            StartLoop("AutoBrewEvent", function()
+                while task.wait(1) do
+                    func.AutoBrewEvent()
+                end
+            end)
+        else
+            StopLoop("AutoBrewEvent")
+        end
+    end)
+})
+
+Config:Register("AutoBrewEvent", AutoBrewEvent)
 
 local FarmSpot = FarmTab:Button({
     Title = "Farm Spot",
